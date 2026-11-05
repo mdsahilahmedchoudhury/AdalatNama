@@ -4,10 +4,9 @@ Updated at the end of every phase. Anything mocked, untested on real material, o
 
 _Last updated: Phase 0 (foundations)._
 
-## Not verified yet
+## Verification status
 
-- **Docker images have not been built yet.** The build sandbox could not pull from Docker Hub (HTTP 429), and containers there cannot reach PyPI or npm. Verified locally: `docker compose config` passes, and `db` + `redis` boot from the real `postgres:16-alpine` / `redis:7-alpine` images, with the init script creating the restricted app role correctly. The API and web images and the full stack are built and exercised end to end (Playwright) by the CI `stack` job. Until that job has passed once, treat `docker compose up` as unverified.
-- **CI has not run yet.** It runs on the first push.
+- **Docker:** verified in CI, not on a developer machine. The build sandbox could not pull from Docker Hub (HTTP 429), and containers there cannot reach PyPI or npm, so images were not built locally. CI run #1 (job "Stack · Docker Compose + e2e") built both images, booted the full Compose stack (db, redis, migrate, api, worker, web), loaded seed data and passed the Playwright sign-in test.
 - **SMTP email has not been tested against a real mail server.** `SmtpMailer` is standard-library `smtplib` code. Until SMTP settings exist, sign-in links come from the console mailer or `python -m app.cli login-link`.
 
 ## Development-only stand-ins
