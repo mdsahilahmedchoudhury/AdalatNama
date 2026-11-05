@@ -78,7 +78,7 @@ jobs:
           uv run ruff format --check .
 
       - name: Type check
-        run: uv run mypy app tests
+        run: uv run mypy app tests tools
 
       - name: Migrations apply cleanly and match the models
         run: |

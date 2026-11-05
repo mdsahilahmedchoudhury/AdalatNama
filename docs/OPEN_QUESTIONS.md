@@ -13,3 +13,6 @@ Raised while reading the build brief and building Phase 0. Work continues on sen
 9. **Read-only client access.** The `client_readonly` role exists. Should client-facing screens be built in v1, or wait until requested (the brief lists the client portal as optional)? *Default:* role enforced server-side; no client screens until requested.
 10. **Quiet hours.** The default is 22:00–07:00 chamber time. Is that right? Display-board alerts only fire during court hours, so they don't clash.
 11. **Telegram bot token.** Not needed until Phase 2. When we get there, create the bot with BotFather and share the token through the environment's secrets, not in chat or git.
+12. **District-court cause lists** (SOURCES.md §5, row 2). No open route has been found. Choose: (a) ingest eCourts' automated emails or SMS to your advocates (preferred; needs one sample message), (b) a human-solved CAPTCHA step in the app, or (c) a paid provider.
+13. **Legal review.** Once the eCourts and High Court terms pages can be opened, please review them and the IT Act s.43 / DPDP s.3(c)(ii) notes in SOURCES.md §4.
+14. **Which tribunals and commissions does your chamber appear before?** For example CAT (Jammu bench), NCLT (Chandigarh bench), DRT, consumer commissions. This decides the order of later adapters.

@@ -1,0 +1,143 @@
+# Phase 0.5 verification targets for tools/source_capture.py.
+#
+# Every URL below was OBSERVED in a search-engine index or a secondary source on
+# 2026-11-05 (see SOURCES.md). None has been fetched from this project yet: the
+# build environment's network policy blocked all court hosts. Run:
+#
+#   cd api && uv run python -m tools.source_capture --targets tools/capture_targets.toml
+#
+# from a machine that can reach them (ideally an Indian IP, since some government
+# sites geofence). Files land in the git-ignored private/source-captures/.
+#
+# capability: cause_list | case_status | orders | display_board | policy | index | other
+
+# --- High Court of Jammu & Kashmir and Ladakh -----------------------------------
+[[target]]
+id = "jkhc-home"
+url = "https://jkhighcourt.nic.in/"
+source_key = "hc_jk_site"
+capability = "index"
+note = "Find the cause-list index page, daily vs weekly lists, Jammu wing paths, terms page."
+
+[[target]]
+id = "jkhc-causelist-sgr-weekly-2026-10-21"
+url = "https://jkhighcourt.nic.in/upload/causelist/sgr/2026/Oct/weeklycauselist_21102026/entirelist_sgr.pdf"
+source_key = "hc_jk_site"
+capability = "cause_list"
+note = "Weekly Srinagar list, URL seen in search index. Check layout: court, bench, serial, case no., parties, counsel."
+
+[[target]]
+id = "jkhc-display-board-sgr"
+url = "https://jkhc.gov.in/dis/"
+source_key = "hc_jk_display"
+capability = "display_board"
+note = "Digital Display Board (Srinagar wing) per search index. Capture several times in court hours to see refresh behaviour."
+
+# --- eCourts High Court Services (all High Courts) --------------------------------
+[[target]]
+id = "hcservices-main"
+url = "https://hcservices.ecourts.gov.in/hcservices/main.php"
+source_key = "ecourts_hc"
+capability = "index"
+note = "Menu and forms: confirm which flows (cause list, case status, orders) show a CAPTCHA."
+
+[[target]]
+id = "hcservices-terms"
+url = "https://hcservices.ecourts.gov.in/hcservices/static_pages_for_HC/static/terms.php"
+source_key = "ecourts_hc"
+capability = "policy"
+note = "Terms and Conditions: read for any rule on automated access."
+
+[[target]]
+id = "hcservices-jk-srinagar"
+url = "https://hcservices.ecourts.gov.in/ecourtindiaHC/index_highcourt.php?state_cd=12&dist_cd=1&court_code=2&stateNm=Jammu+and+Kashmir"
+source_key = "ecourts_hc"
+capability = "index"
+note = "Srinagar Wing landing page (state_cd=12, court_code=2) seen in search index."
+
+# --- eCourts District & Taluka Court Services --------------------------------------
+[[target]]
+id = "ecourts-district-main"
+url = "https://services.ecourts.gov.in/ecourtindia_v6/"
+source_key = "ecourts_district"
+capability = "index"
+note = "Confirm CAPTCHA on CNR search, cause list and orders; note state/district/complex selectors."
+
+[[target]]
+id = "ecourts-home"
+url = "https://ecourts.gov.in/ecourts_home/"
+source_key = "ecourts_portal"
+capability = "policy"
+note = "Links to Terms, Disclaimer, Copyright and Hyperlinking policies."
+
+[[target]]
+id = "srinagar-district-home"
+url = "https://srinagar.dcourts.gov.in/"
+source_key = "dc_srinagar_site"
+capability = "index"
+note = "District Court Srinagar site: where its cause list and any display board link point."
+
+# --- Comparison High Court and the Supreme Court ----------------------------------------
+[[target]]
+id = "delhihc-display-board"
+url = "https://delhihighcourt.nic.in/app/physical-display-board"
+source_key = "hc_delhi_display"
+capability = "display_board"
+note = "Official circular: shows court no., item no., judges, case no. and title."
+
+[[target]]
+id = "sci-causelist-2026-10-26-M_J_2"
+url = "https://api.sci.gov.in/jonew/cl/2026-10-26/M_J_2.pdf"
+source_key = "sci_causelist"
+capability = "cause_list"
+note = "Daily cause list PDF, path pattern /jonew/cl/YYYY-MM-DD/{M|F}_J_n.pdf seen in search index."
+
+[[target]]
+id = "sci-website-policies"
+url = "https://www.sci.gov.in/website-policies/"
+source_key = "sci_site"
+capability = "policy"
+note = "Reproduction allowed with acknowledgement (secondary); confirm wording and any automation rule."
+
+# --- Tribunals and consumer commissions ------------------------------------------------
+[[target]]
+id = "nclt-supplementary-2025-07-16"
+url = "https://nclt.gov.in/sites/default/files/pdf_cause_list/Supple%2016.07.2025%20Court%201.pdf"
+source_key = "nclt_site"
+capability = "cause_list"
+note = "Bench PDF cause list; file names look hand-made, so an index page is needed."
+
+[[target]]
+id = "nclt-efiling-causelist"
+url = "https://efiling.nclt.gov.in/nclt/mis/causelist.php"
+source_key = "nclt_efiling"
+capability = "cause_list"
+note = "Customised cause list referenced in bench PDFs; check whether it needs a CAPTCHA."
+
+[[target]]
+id = "ngt-principal-court2-causelists"
+url = "https://www.greentribunal.gov.in/archive-principal-court-II-cause-list"
+source_key = "ngt_site"
+capability = "cause_list"
+note = "Dated cause-list links per bench (archive current to 2026 per search index)."
+
+[[target]]
+id = "ejagriti-home"
+url = "https://e-jagriti.gov.in/"
+source_key = "ejagriti"
+capability = "index"
+note = "Consumer commissions since 1 Jan 2025: cause list by date + commission + court; check CAPTCHA/login."
+
+[[target]]
+id = "cat-home"
+url = "https://cgat.gov.in/"
+source_key = "cat_site"
+capability = "index"
+note = "Central Administrative Tribunal: daily cause lists per bench (Jammu bench covers J&K)."
+
+[[target]]
+id = "itat-home"
+url = "https://itat.gov.in/"
+source_key = "itat_site"
+capability = "index"
+note = "Income Tax Appellate Tribunal: nothing found in desk research; locate cause lists."

@@ -9,7 +9,7 @@ It tracks and reminds. It does not give legal advice: every derived date shows i
 | Phase | Scope | State |
 |---|---|---|
 | 0 | Foundations: repo, Docker, CI, auth, tenancy, seed | ✅ done |
-| 0.5 | Source discovery: how each court source can legitimately be read (`SOURCES.md`) | next |
+| 0.5 | Source discovery: how each court source can legitimately be read ([SOURCES.md](SOURCES.md)) | draft: blocked on network access to court sites |
 | 1 | Core CRM: eCourts import, case list, filters, calendar, .ics | planned ([plan](docs/PHASE1_PLAN.md)) |
 | 2 | Telegram bot + notification engine | planned |
 | 3 | Cause lists: adapters, matching, consolidated list, 6 PM digest | planned |
@@ -29,6 +29,7 @@ api/                  FastAPI API + ARQ worker + operator CLI (Python 3.12, uv)
     schemas/          Pydantic request/response models
     worker/           ARQ worker settings and jobs
     cli.py            seed / create-chamber / login-link
+  tools/              source_capture.py: polite one-off capture of public court pages
   alembic/            migrations (0001_foundations)
   tests/              pytest suite, incl. cross-tenant leakage tests
 web/                  Next.js 16 app (TypeScript, Tailwind 4, shadcn/ui), mobile-first PWA
@@ -121,6 +122,7 @@ The Playwright test expects the stack running on http://localhost:3000 with seed
 
 ## Documents
 
+- [SOURCES.md](SOURCES.md): court data sources, access classes and the adapter plan (draft)
 - [DECISIONS.md](DECISIONS.md): why things are the way they are
 - [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md): what is mocked, unverified or missing
 - [SECURITY.md](SECURITY.md): confidentiality rules (read before committing anything)

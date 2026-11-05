@@ -2,11 +2,12 @@
 
 Updated at the end of every phase. Anything mocked, untested on real material, or missing is listed here.
 
-_Last updated: Phase 0 (foundations)._
+_Last updated: Phase 0.5 (source discovery, draft)._
 
 ## Verification status
 
 - **Docker:** verified in CI, not on a developer machine. The build sandbox could not pull from Docker Hub (HTTP 429), and containers there cannot reach PyPI or npm, so images were not built locally. CI run #1 (job "Stack · Docker Compose + e2e") built both images, booted the full Compose stack (db, redis, migrate, api, worker, web), loaded seed data and passed the Playwright sign-in test.
+- **Source discovery is desk research only.** The build environment's network policy blocks every court host, so no court page has been fetched and no fixture captured. All access classes in SOURCES.md are provisional (evidence levels O and S, none V). The capture tool is tested against a local server only.
 - **SMTP email has not been tested against a real mail server.** `SmtpMailer` is standard-library `smtplib` code. Until SMTP settings exist, sign-in links come from the console mailer or `python -m app.cli login-link`.
 
 ## Development-only stand-ins
@@ -16,7 +17,7 @@ _Last updated: Phase 0 (foundations)._
 
 ## Not built yet (by design: later phases)
 
-- No court data of any kind: no cause lists, display boards, orders or eCourts lookups. Source discovery is Phase 0.5, and nothing pretends to fetch court data in the meantime.
+- No court data of any kind: no cause lists, display boards, orders or eCourts lookups. SOURCES.md is a draft awaiting verification; no adapter exists, and nothing pretends to fetch court data.
 - No cases, clients, hearings, calendar or import (Phase 1). The home screen says so plainly.
 - No Telegram bot, notification engine or Web Push (Phase 2).
 - No team or user management screens. Chambers and users are created with the CLI (`create-chamber`, `seed`). Inviting users from the web app is planned for Phase 1, because assignments need it.
