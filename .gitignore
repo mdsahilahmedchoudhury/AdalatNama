@@ -1,0 +1,36 @@
+# --- Secrets and configuration ---
+.env
+.env.*
+!.env.example
+
+# --- CLIENT DATA: never commit ---
+# The chamber's eCourts export, order PDFs and anything else holding real
+# client or case data belongs in private/ (or outside the repository).
+# See SECURITY.md.
+private/*
+!private/README.md
+storage/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Node / Next.js ---
+node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+test-results/
+playwright-report/
+blob-report/
+
+# --- OS / editors ---
+.DS_Store
+*.log
+.idea/
+.vscode/
