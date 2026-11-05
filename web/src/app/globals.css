@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+/*
+ * AdalatNama design tokens.
+ * Ink (deep green-blue) for structure, parchment for the page, brass for the
+ * one thing on screen that matters most. Tuned for bright court corridors:
+ * high contrast, large tap targets, no thin grey text.
+ */
+:root {
+  --background: #f6f2e9;
+  --foreground: #1c1b18;
+  --card: #fffdf8;
+  --card-foreground: #1c1b18;
+  --primary: #12343b;
+  --primary-foreground: #f6f2e9;
+  --accent: #b5832a;
+  --accent-foreground: #1c1b18;
+  --muted: #ece6d8;
+  --muted-foreground: #5f5a50;
+  --border: #ddd4c0;
+  --input: #cfc5ae;
+  --ring: #12343b;
+  --destructive: #a33a2b;
+  --success: #2f6b4f;
+  --warning: #8a5a00;
+  --radius: 0.625rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0f1a1c;
+    --foreground: #eee8db;
+    --card: #162427;
+    --card-foreground: #eee8db;
+    --primary: #8cc1c4;
+    --primary-foreground: #0f1a1c;
+    --accent: #d6a64c;
+    --accent-foreground: #0f1a1c;
+    --muted: #1f3033;
+    --muted-foreground: #b3ab9b;
+    --border: #2b3e41;
+    --input: #3a5054;
+    --ring: #8cc1c4;
+    --destructive: #e07a69;
+    --success: #7cc4a0;
+    --warning: #e2b75c;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 6px);
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial,
+    sans-serif;
+  --font-serif:
+    "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Noto Serif", serif;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+}

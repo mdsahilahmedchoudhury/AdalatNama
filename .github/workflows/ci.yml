@@ -1,0 +1,165 @@
+# AdalatNama CI
+#
+#   api    lint (ruff), format check, type check (mypy --strict), migration drift
+#          check, and the pytest suite (incl. cross-tenant leakage tests) against
+#          real Postgres 16 and Redis 7.
+#   web    ESLint, Prettier check, TypeScript check, production build.
+#   stack  builds the Docker images, boots the whole Compose stack, and runs the
+#          Playwright sign-in smoke test in a phone viewport.
+
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API · lint, types, tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: adalatnama_owner
+          POSTGRES_PASSWORD: owner_ci_pw
+          POSTGRES_DB: adalatnama_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U adalatnama_owner"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgresql+asyncpg://adalatnama_app:app_ci_pw@localhost:5432/adalatnama_test
+      TEST_MIGRATION_DATABASE_URL: postgresql+asyncpg://adalatnama_owner:owner_ci_pw@localhost:5432/adalatnama_test
+      MIGRATION_DATABASE_URL: postgresql+asyncpg://adalatnama_owner:owner_ci_pw@localhost:5432/adalatnama_test
+      TEST_REDIS_URL: redis://localhost:6379/15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.32"
+
+      - name: Install Python 3.12 and dependencies
+        run: |
+          uv python install 3.12
+          uv sync --frozen
+
+      - name: Create the restricted app role
+        working-directory: .
+        env:
+          PGHOST: localhost
+          PGPASSWORD: owner_ci_pw
+          POSTGRES_USER: adalatnama_owner
+          POSTGRES_DB: adalatnama_test
+          DB_APP_PASSWORD: app_ci_pw
+        run: ./infra/postgres/init/01-app-role.sh
+
+      - name: Lint and format check
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+
+      - name: Type check
+        run: uv run mypy app tests
+
+      - name: Migrations apply cleanly and match the models
+        run: |
+          uv run alembic upgrade head
+          uv run alembic check
+          uv run alembic downgrade base
+
+      - name: Tests
+        run: uv run pytest -q
+
+  web:
+    name: Web · lint, types, build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run typecheck
+      - run: npm run build
+
+  stack:
+    name: Stack · Docker Compose + e2e
+    needs: [api, web]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Write a CI-only .env
+        run: |
+          cp .env.example .env
+          sed -i "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$(openssl rand -hex 16)/" .env
+          sed -i "s/^DB_APP_PASSWORD=.*/DB_APP_PASSWORD=$(openssl rand -hex 16)/" .env
+          sed -i "s/^SESSION_SECRET=.*/SESSION_SECRET=$(openssl rand -hex 32)/" .env
+
+      - name: Build images
+        run: docker compose build
+
+      - name: Start the stack
+        run: docker compose up -d
+
+      - name: Wait for the web app and API, then load demo data
+        run: |
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://localhost:3000/api/health; then break; fi
+            if [ "$attempt" = 60 ]; then echo "stack did not become healthy"; exit 1; fi
+            sleep 3
+          done
+          docker compose exec -T api python -m app.cli seed
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Run Playwright smoke test
+        working-directory: web
+        env:
+          E2E_BASE_URL: http://localhost:3000
+          E2E_LOGIN_LINK_CMD: docker compose exec -T api python -m app.cli login-link
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          npx playwright test
+
+      - name: Service logs on failure
+        if: failure()
+        run: docker compose logs --no-color --tail 200
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: web/test-results
+          retention-days: 7

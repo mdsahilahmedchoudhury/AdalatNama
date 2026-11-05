@@ -1,0 +1,22 @@
+# Phase 1 plan: Core CRM
+
+Goal (§10): import the chamber's real eCourts export, filter cases, and see every date on a calendar.
+
+**Order of work.** Phase 0.5 (Source Discovery, `SOURCES.md`) comes first and needs your approval. Phase 1 cannot start its import work until the real eCourts export file has been received (OPEN_QUESTIONS Q2). Tasks 2–4 and 10 do not depend on the file and can start earlier if you want.
+
+Every task ends with passing tests, and the phase ends with a demo script and a phase report.
+
+| # | Task | Done when |
+|---|---|---|
+| 1 | **Inspect the real eCourts export.** Keep it in `private/` (never committed). Document its true structure in `docs/ECOURTS_EXPORT_FORMAT.md`: file type, encoding, columns or fields, date formats, how High Court and district cases differ. Build a **synthetic** fixture with the same structure and invented data, including a 500-case and a 5,000-case version. | Format doc reviewed by you; synthetic fixtures committed; no real data in git. |
+| 2 | **Domain models + migration 0002:** Forum (global), Client, Case, CaseClient, CaseAssignment, Hearing, Deadline, CaseNote, ImportBatch, User→Client link for read-only clients. RLS, grants and composite `(chamber_id, …)` foreign keys on every chamber-owned table. Indexes: `(chamber_id, next_hearing_date)`, CNR (unique per chamber when present), trigram GIN on title and party names. Pydantic schemas. | `alembic check` clean; cross-tenant suite extended to every new table. |
+| 3 | **Date provenance + audit.** Every hearing and deadline date records `court | manual | system_suggestion`. Changes to dates, assignments and case details write `AuditLog` before/after. Court-sourced dates win over computed ones. | Tests prove an uncertain import never silently overwrites a manual or court date. |
+| 4 | **Forum registry + case-type aliases.** Map export establishment and court codes to Forum rows (created automatically, classified High Court or district court). Seed the alias table for `WP(C)` / `W.P.(C.)` / `Writ Petition (Civil)` and similar, so the Phase 3 matcher can reuse it. | Unit tests over the alias table and forum mapping. |
+| 5 | **Import pipeline (F1).** Upload endpoint with size and type limits. Then parse → normalise → upsert, keyed by CNR, else forum + type + number + year. Idempotent. Import report (created / updated / unchanged / failed, with row-level reasons) downloadable as CSV. Runs as a worker job with progress. | **Acceptance:** the 500-case fixture imported twice gives 0 duplicates and a correct report, and every case appears in the list and calendar. |
+| 6 | **Bulk assignment.** Select many cases, then assign lawyers (lead / junior / clerk) and clients. | API + UI + audit entries. |
+| 7 | **Case list API + screen (F2).** Filters: forum, assigned lawyer, date range, client, status, stage. Combinable, and carried in URL query params so they can be shared. Full-text + fuzzy search over title, parties, case number and CNR. Saved views: "My cases", "Tomorrow", "No next date". | **Acceptance:** any combination of the four core filters returns correct results in < 300 ms over 5,000 cases (benchmark test). |
+| 8 | **Case detail screen:** summary, hearing history, assignments, clients, notes (private-note rule per Q8), and manual hearing / deadline entry with source labels and a "verify against the order" notice on any computed date. | Empty, loading and error states covered. |
+| 9 | **Calendar (F3):** month / week / agenda views of every hearing and deadline, coloured by forum and filterable by lawyer. Clashes highlighted (same lawyer, same date, different forums), as are dates with no assigned lawyer. Personal **.ics feed** at a signed, revocable, token-protected URL. | **Acceptance:** a hearing added by import or manual entry appears in all three views and in the .ics feed (cause-list-sourced hearings join in Phase 3). |
+| 10 | **Team and clients.** Owner adds and removes members and changes roles (needed for assignments). Clients CRUD. `client_readonly` users see only their own cases (server-side). | Role tests for every new endpoint. |
+| 11 | **Web screens:** Dashboard (today / tomorrow / overdue / no next date), Cases, Case detail, Calendar, Imports, Clients, Team. The bottom nav grows to Home · Cases · Calendar · More. | Playwright: import → filter → open case → calendar, on a phone viewport. |
+| 12 | **Phase report:** what works and how to run it, what is mocked, what is needed next, risks. Update DECISIONS and KNOWN_LIMITATIONS. | Report delivered; stop for your review. |

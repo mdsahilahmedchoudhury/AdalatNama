@@ -1,0 +1,106 @@
+# AdalatNama: development stack (and the shape of the single-VPS production stack).
+#
+#   cp .env.example .env        # then change every CHANGE ME value
+#   docker compose up --build
+#   docker compose run --rm api python -m app.cli seed     # optional fictional demo data
+#
+# Web app: http://localhost:3000   API docs: http://localhost:8000/api/docs
+
+name: adalatnama
+
+x-api-env: &api-env
+  ENVIRONMENT: ${ENVIRONMENT:-development}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  DATABASE_URL: postgresql+asyncpg://${DB_APP_ROLE:-adalatnama_app}:${DB_APP_PASSWORD:?set DB_APP_PASSWORD in .env}@db:5432/${POSTGRES_DB:-adalatnama}
+  MIGRATION_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-adalatnama_owner}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-adalatnama}
+  DB_APP_ROLE: ${DB_APP_ROLE:-adalatnama_app}
+  REDIS_URL: redis://redis:6379/0
+  SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in .env}
+  COOKIE_SECURE: ${COOKIE_SECURE:-false}
+  WEB_BASE_URL: ${WEB_BASE_URL:-http://localhost:3000}
+  MAILER: ${MAILER:-console}
+  SMTP_HOST: ${SMTP_HOST:-}
+  SMTP_PORT: ${SMTP_PORT:-587}
+  SMTP_USERNAME: ${SMTP_USERNAME:-}
+  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  SMTP_FROM: ${SMTP_FROM:-AdalatNama <no-reply@localhost>}
+  DEFAULT_TIMEZONE: ${DEFAULT_TIMEZONE:-Asia/Kolkata}
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-adalatnama_owner}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-adalatnama}
+      DB_APP_ROLE: ${DB_APP_ROLE:-adalatnama_app}
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD:?set DB_APP_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    # Not published to the host by default. Uncomment for local psql access.
+    # ports: ["5432:5432"]
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # One-shot: applies database migrations as the owner role, then exits.
+  migrate:
+    build: ./api
+    command: ["alembic", "upgrade", "head"]
+    environment: *api-env
+    depends_on:
+      db: { condition: service_healthy }
+
+  api:
+    build: ./api
+    environment: *api-env
+    ports: ["8000:8000"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=4)"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  worker:
+    build: ./api
+    command: ["arq", "app.worker.settings.WorkerSettings"]
+    environment: *api-env
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+
+  web:
+    build:
+      context: ./web
+      args:
+        API_INTERNAL_URL: http://api:8000
+    environment:
+      API_INTERNAL_URL: http://api:8000
+    ports: ["3000:3000"]
+    depends_on:
+      api: { condition: service_healthy }
+
+volumes:
+  pgdata:
+  redisdata:
