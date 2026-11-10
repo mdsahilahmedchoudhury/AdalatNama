@@ -2,12 +2,13 @@
 
 Updated at the end of every phase. Anything mocked, untested on real material, or missing is listed here.
 
-_Last updated: Phase 0.5 (source discovery, draft)._
+_Last updated: Phase 0.5 (source discovery, first verification round 2026-11-10)._
 
 ## Verification status
 
 - **Docker:** verified in CI, not on a developer machine. The build sandbox could not pull from Docker Hub (HTTP 429), and containers there cannot reach PyPI or npm, so images were not built locally. CI run #1 (job "Stack · Docker Compose + e2e") built both images, booted the full Compose stack (db, redis, migrate, api, worker, web), loaded seed data and passed the Playwright sign-in test.
-- **Source discovery is desk research only.** The build environment's network policy blocks every court host, so no court page has been fetched and no fixture captured. All access classes in SOURCES.md are provisional (evidence levels O and S, none V). The capture tool is tested against a local server only.
+- **Source discovery is partly verified.** On 2026-11-10 the pilot sources (J&K HC, eCourts portals, District Court Srinagar, Supreme Court cause lists, eCourts policies) were checked live; see SOURCES.md §8. Not yet verified: the other 24 High Courts, the J&K display board during live calling, the JavaScript-app tribunals (CAT, e-Jagriti), and NCLT and ITAT (certificate errors).
+- **Captured fixtures are not durable.** They sit in the git-ignored `private/` folder of an ephemeral cloud container, because they name real litigants and the repository is public. They will be lost when the container is reclaimed, unless the repository is made private and they are committed (or they are redacted first).
 - **SMTP email has not been tested against a real mail server.** `SmtpMailer` is standard-library `smtplib` code. Until SMTP settings exist, sign-in links come from the console mailer or `python -m app.cli login-link`.
 
 ## Development-only stand-ins

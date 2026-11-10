@@ -9,7 +9,7 @@ It tracks and reminds. It does not give legal advice: every derived date shows i
 | Phase | Scope | State |
 |---|---|---|
 | 0 | Foundations: repo, Docker, CI, auth, tenancy, seed | ✅ done |
-| 0.5 | Source discovery: how each court source can legitimately be read ([SOURCES.md](SOURCES.md)) | draft: blocked on network access to court sites |
+| 0.5 | Source discovery: how each court source can legitimately be read ([SOURCES.md](SOURCES.md)) | in progress: pilot sources verified; all-HC survey pending |
 | 1 | Core CRM: eCourts import, case list, filters, calendar, .ics | planned ([plan](docs/PHASE1_PLAN.md)) |
 | 2 | Telegram bot + notification engine | planned |
 | 3 | Cause lists: adapters, matching, consolidated list, 6 PM digest | planned |

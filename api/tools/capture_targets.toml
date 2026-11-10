@@ -1,37 +1,58 @@
 # Phase 0.5 verification targets for tools/source_capture.py.
 #
-# Every URL below was OBSERVED in a search-engine index or a secondary source on
-# 2026-11-05 (see SOURCES.md). None has been fetched from this project yet: the
-# build environment's network policy blocked all court hosts. Run:
+# URLs were first found by desk research (2026-11-05) and verified live on
+# 2026-11-10 (see SOURCES.md §8 for outcomes). Re-run to refresh fixtures:
 #
 #   cd api && uv run python -m tools.source_capture --targets tools/capture_targets.toml
 #
-# from a machine that can reach them (ideally an Indian IP, since some government
-# sites geofence). Files land in the git-ignored private/source-captures/.
+# Some government hosts drop or refuse non-Indian traffic; run from an Indian
+# network if a host is "unreachable". Files land in the git-ignored
+# private/source-captures/ because they name real people.
 #
 # capability: cause_list | case_status | orders | display_board | policy | index | other
 
-# --- High Court of Jammu & Kashmir and Ladakh -----------------------------------
+# --- High Court of Jammu & Kashmir and Ladakh (pilot) -----------------------------
 [[target]]
 id = "jkhc-home"
 url = "https://jkhighcourt.nic.in/"
 source_key = "hc_jk_site"
 capability = "index"
-note = "Find the cause-list index page, daily vs weekly lists, Jammu wing paths, terms page."
+note = "Home page; links to the per-wing cause-list index pages."
+
+[[target]]
+id = "jkhc-causelist-index-sgr"
+url = "https://jkhighcourt.nic.in/causelistk.php"
+source_key = "hc_jk_site"
+capability = "index"
+note = "Srinagar cause-list index: daily, supplementary, entire-week and Registrar lists. Links use backslashes."
+
+[[target]]
+id = "jkhc-causelist-index-jmu"
+url = "https://jkhighcourt.nic.in/causelistj.php"
+source_key = "hc_jk_site"
+capability = "index"
+note = "Jammu cause-list index."
+
+[[target]]
+id = "jkhc-causelist-index-ladakh"
+url = "https://jkhighcourt.nic.in/causelistl.php"
+source_key = "hc_jk_site"
+capability = "index"
+note = "Ladakh cause-list index."
 
 [[target]]
 id = "jkhc-causelist-sgr-weekly-2026-10-21"
 url = "https://jkhighcourt.nic.in/upload/causelist/sgr/2026/Oct/weeklycauselist_21102026/entirelist_sgr.pdf"
 source_key = "hc_jk_site"
 capability = "cause_list"
-note = "Weekly Srinagar list, URL seen in search index. Check layout: court, bench, serial, case no., parties, counsel."
+note = "Entire-week compilation (162 pages, bench index). Prefer the per-day causelist_DDMMYYYY.pdf files."
 
 [[target]]
 id = "jkhc-display-board-sgr"
 url = "https://jkhc.gov.in/dis/"
 source_key = "hc_jk_display"
 capability = "display_board"
-note = "Digital Display Board (Srinagar wing) per search index. Capture several times in court hours to see refresh behaviour."
+note = "Server-rendered HTML, meta refresh 120 s, one table per wing plus messages. Observe during live calling (10:30-13:00 IST)."
 
 # --- eCourts High Court Services (all High Courts) --------------------------------
 [[target]]
@@ -141,3 +162,25 @@ url = "https://itat.gov.in/"
 source_key = "itat_site"
 capability = "index"
 note = "Income Tax Appellate Tribunal: nothing found in desk research; locate cause lists."
+
+# --- Policies and the district cause-list form (verified 2026-11-10) -------------------
+[[target]]
+id = "ecourts-policy-terms"
+url = "https://ecourts.gov.in/ecourts2.0/?p=about_us/terms"
+source_key = "ecourts_portal"
+capability = "policy"
+note = "Reference purposes only; not a legal document. No rule on automated access."
+
+[[target]]
+id = "ecourts-policy-copyright"
+url = "https://ecourts.gov.in/ecourts2.0/?p=about_us/copyright"
+source_key = "ecourts_portal"
+capability = "policy"
+note = "Reproduction only with due and prominent acknowledgement of the source."
+
+[[target]]
+id = "srinagar-district-causelist-page"
+url = "https://srinagar.dcourts.gov.in/cause-list-%e2%81%84-daily-board/"
+source_key = "dc_srinagar_site"
+capability = "cause_list"
+note = "Cause list / daily board form: complex, establishment, court no., date, civil/criminal + securimage CAPTCHA."

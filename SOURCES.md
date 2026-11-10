@@ -1,7 +1,8 @@
 # Sources: where court data comes from, and how AdalatNama may read it
 
-> **Status: DRAFT, Phase 0.5, desk research only (2026-11-05).**
-> No court page has been fetched by this project yet. The build environment's network policy refused every court host (`ecourts.gov.in`, `*.nic.in`, `sci.gov.in`, `*.gov.in` tribunal sites), both for direct requests and for the page-fetching tool. Everything below comes from search-engine indexes and secondary sources. **Every access class is provisional** until verified against the live page with `api/tools/source_capture.py` (§6). No adapter code will be written from this draft.
+> **Status: Phase 0.5. First verification round done on 2026-11-10** (14:53–15:10 IST, a court day).
+> 33 polite requests were made with `api/tools/source_capture.py`. 23 pages and files were saved; the rest failed or were skipped (manifest in §8). Rows marked **V** were checked against the live source. Rows still marked **O** or **S** come from desk research and remain provisional.
+> **J&K & Ladakh High Court and District Court Srinagar are the pilot**, not the limit. The goal is every High Court, district court, tribunal and commission; §5 explains how the design scales.
 
 ## 1. How to read this document
 
@@ -19,163 +20,205 @@ A `?` after a class means *provisional*.
 
 **Evidence levels:**
 
-- **V**: verified by fetching the live page (none yet).
-- **O**: the exact URL was *observed* in a search-engine index or an official document found by search.
-- **S**: described by a *secondary* source (news, blogs, aggregators, coaching sites). Weakest.
+- **V**: verified by fetching the live source on the date given.
+- **O**: the URL was observed in a search index or an official document.
+- **S**: described by a secondary source.
 
 ## 2. Summary matrix
 
-Assumes the first courts are the **High Court of J&K and Ladakh (Srinagar wing)** and the **District Court, Srinagar**, matching the reference chamber. You have not confirmed this yet (OPEN_QUESTIONS Q3).
-
 | Forum | Cause list | Case status | Orders | Display board |
 |---|---|---|---|---|
-| **J&K & Ladakh HC (Srinagar)** | HC website weekly PDF: **OPEN?** (O). eCourts HC Services: **CAPTCHA** (S) | eCourts HC Services: **CAPTCHA** (S) | eCourts HC Services: **CAPTCHA?** (S). HC website: UNKNOWN | `jkhc.gov.in/dis/`: **OPEN?** (O) |
-| **District Court, Srinagar** | eCourts District Services: **CAPTCHA?** (S). Official email/SMS to registered advocate: **OPEN to that advocate** (S) | eCourts District Services: **CAPTCHA** (S) | eCourts District Services: **CAPTCHA?** (S) | **UNKNOWN**. Physical boards exist; an "online display board" is mentioned for e-Sewa Kendras (S) |
-| **Supreme Court** | Daily PDF at `api.sci.gov.in`: **OPEN?** (O) | UNKNOWN | UNKNOWN | **UNKNOWN** |
-| **Tribunals** | NCLT bench PDFs: **OPEN?** (O). NGT dated pages: **OPEN?** (O). CAT, ITAT, DRT: **UNKNOWN** | UNKNOWN | UNKNOWN | UNKNOWN |
-| **Consumer commissions** | e-Jagriti by date + commission + court no.: **UNKNOWN** (S) | e-Jagriti: **UNKNOWN** (S) | UNKNOWN | UNKNOWN |
+| **J&K & Ladakh HC** (pilot) | HC website daily PDFs: **OPEN** (V) | eCourts HC Services: **CAPTCHA** (V) | eCourts HC Services: **CAPTCHA** (V); the HC website's "Orders/Judgements" link points there | `jkhc.gov.in/dis/`: **OPEN** (V); live behaviour still to observe (§6) |
+| **District Court Srinagar** (pilot) | District website **and** eCourts District Services: **CAPTCHA** (V). eCourts email/SMS to the registered advocate: **OPEN to that advocate** (S) | eCourts District Services: **CAPTCHA** (V) | eCourts District Services: **CAPTCHA** (V: CAPTCHA on the portal; order flow not separately opened) | **UNKNOWN**: no online board found |
+| **Supreme Court** | Daily PDF at `api.sci.gov.in`: **OPEN** (V) | UNKNOWN | UNKNOWN | UNKNOWN. `www.sci.gov.in` refuses automated requests (403, V) |
+| **Other High Courts** | Not yet surveyed (§6, item 1) | eCourts HC Services: **CAPTCHA** (V, same portal) | eCourts HC Services: **CAPTCHA** (V) | Delhi: board exists, data loaded by script (V); others not yet surveyed |
+| **Tribunals** | NGT: cause-list pages **OPEN** (V). NCLT, ITAT: certificate errors (§3.7). CAT: a JavaScript app (V); data route unknown | UNKNOWN | UNKNOWN | UNKNOWN |
+| **Consumer commissions** | e-Jagriti: a JavaScript app (V); data route **UNKNOWN** | UNKNOWN | UNKNOWN | UNKNOWN |
 | **Official API (NJDG Open API)** | **NOT PERMITTED?**: for government institutional litigants only (S) | same | same | n/a |
 
 ## 3. Source details
 
 ### 3.1 eCourts High Court Services (`hcservices.ecourts.gov.in`): all High Courts
 
-- **What it is:** a central portal for every High Court and bench, offering CNR search, case status, court orders, cause list and caveat search (O: homepage via search; [eCommittee description](https://ecommitteesci.gov.in/project/high-court-services/)).
-- **Per-court entry point** (O): `https://hcservices.ecourts.gov.in/ecourtindiaHC/index_highcourt.php?state_cd=12&dist_cd=1&court_code=2&stateNm=Jammu+and+Kashmir` is the Srinagar Wing page. Madras is `state_cd=10&court_code=1`. The parameters are the portal's own state and bench codes, which is what §2A asks adapters to use.
-- **CAPTCHA:** lookups need a typed CAPTCHA (S: [Vikaspedia guide](https://en.vikaspedia.in/viewcontent/e-governance/online-legal-services/how-to-check-court-case-status-online-in-india-a-complete-guide-to-ecourts-cnr-number-case-number-and-case-history?lgn=en)). The brief states the cause-list flow is CAPTCHA-gated. An accessible (audio) CAPTCHA was added across High Court sites (S: [India Education Diary](https://indiaeducationdiary.in/?p=163530)).
-- **Terms:** a Terms and Conditions page exists (O: `hcservices.ecourts.gov.in/hcservices/static_pages_for_HC/static/terms.php`), but its **text has not been read**.
-- **Classification:** cause list **CAPTCHA**, case status **CAPTCHA**, orders **CAPTCHA?**.
-- **Do not:** OCR the CAPTCHA, reuse solved sessions, or call the portal's background endpoints directly to skip the form.
+- **Verified 2026-11-10:**
+  - `main.php` loads the `securimage` CAPTCHA script, with a separate CAPTCHA box for every flow:
+    - cause list (`captcha_box_clcauselist`);
+    - CNR;
+    - case number (`captcha_box_cocasenumber`);
+    - party name (`captcha_box_copartyname`);
+    - advocate name (`captcha_box_csadvname`);
+    - court number (`captcha_box_cocourtnumber`);
+    - order date (`captcha_box_coorderdate`);
+    - FIR, filing number, act and caveat.
+  - The Srinagar Wing page (`ecourtindiaHC/index_highcourt.php?state_cd=12&dist_cd=1&court_code=2`) links Case Status, Case Orders/Judgement, Order Date and Cause List.
+  - **Every flow is CAPTCHA-gated.**
+- **Terms (V, quoted):** "The documents and information displayed in this website are for reference purposes only and do not purport to a legal document." Users should "verify / check with the authorities concerned or the relevant record". **The terms say nothing about automated access.**
+- **Implication:** for all 25 High Courts, the eCourts portal cannot feed cause lists or orders automatically. Use each High Court's own published lists (§3.4, §5) and, for orders, a human-in-the-loop step or an official push.
 
-### 3.2 eCourts District & Taluka Court Services (`services.ecourts.gov.in`)
+### 3.2 eCourts District & Taluka Court Services (`services.ecourts.gov.in/ecourtindia_v6/`)
 
-- **What it is:** CNR search, case status, orders and cause lists for district and subordinate courts. The current path is `/ecourtindia_v6/`; older district sites still link `ecourtindia_v4_bilingual` / `v5.1` `dailyboard.php` pages with state and district codes in the query string (S: [Parbhani district page](https://parbhani.gov.in/service/e-court-services)).
-- **CAPTCHA:** CNR lookups need a visual CAPTCHA per request (S). That cause lists and orders are also gated is likely but **unverified**.
-- **District websites:** `<district>.dcourts.gov.in` (S3WaaS platform). The [Srinagar site](https://srinagar.dcourts.gov.in/document-category/notification) has Case Status, Holiday List and Judges on Leave menus (O). Where its cause-list link points is unverified.
-- **Classification:** case status **CAPTCHA**, cause list **CAPTCHA?**, orders **CAPTCHA?**.
+- **Verified 2026-11-10:** the portal loads `securimage` with an image and an audio CAPTCHA (`captcha_cnr`, `fcaptcha_code`, `captcha_image_audio`). Case Status, Court Orders and Cause List are its menu items. **CAPTCHA**.
+- **District websites** (`<district>.dcourts.gov.in`, a WordPress "S3WaaS" site with an eCourts plugin), verified on Srinagar:
+  - The **Cause List / Daily Board** page has a form with fields Court Complex / Establishment (`est_code`), Court Number, Cause List Date, Civil/Criminal, and a `securimage-wp` CAPTCHA ("Please Enter the Captcha *").
+  - **CAPTCHA**, so there is **no open route to district cause lists**.
+- **Reachability:** `srinagar.dcourts.gov.in` dropped the connection once (a reset after 3 s), then answered normally. Treat it as unreliable from non-Indian networks.
 
 ### 3.3 Official push channels to advocates (eCourts CIS)
 
-- eCourts sends **automated SMS and emails on case events** to advocates and litigants whose mobile number or email is registered with the court. That covers same-day proceedings, the next date and a reminder the day before (S: eCourts presentations hosted on [s3waas](https://cdnbbsr.s3waas.gov.in/s3ec04621fbd17da27241c58015eabe416/uploads/2023/11/2023112049.pdf), [Hindustan Times via PressReader](https://www.pressreader.com/india/hindustan-times-lucknow/20171127/281569471041806)). Court training schedules list "automatic receipt of SMS and e-Mail on Court listing" as an advocate tool (S).
-- **Why it matters:** this is an official channel the advocate is already entitled to. Ingesting the advocate's *own* notifications (forwarded to a chamber mailbox, with consent) needs no scraping and no CAPTCHA. **Treat as the preferred route for district courts**, if the chamber's advocates receive these messages.
-- **Classification:** **OPEN to the registered advocate** (S). Needs one real sample email from you. That is your own data, so asking is permitted (§2.1).
+- eCourts sends automated SMS and emails on case events to advocates and litigants registered with the court: proceedings, the next date, and a reminder the day before (S: eCourts presentations and press, see Sources).
+- **This is the only non-CAPTCHA route found for district courts**, and one adapter would cover *every* district court in India, because the messages come from one national system. Still unverified: the message format, and whether listing alerts carry court number and item number. **Needs one real sample** from you (your own data, so asking is permitted).
 
-### 3.4 High Court of J&K and Ladakh: own website and display board
+### 3.4 High Court of J&K and Ladakh: own website and display board (pilot)
 
-- **Cause lists (O):** weekly Srinagar lists are published as PDFs at
-  `https://jkhighcourt.nic.in/upload/causelist/sgr/<YYYY>/<Mon>/weeklycauselist_<DDMMYYYY>/entirelist_sgr.pdf`.
-  Observed for 27 Jan, 9 Mar, 27 Apr and 21 Oct 2026 ([example](https://jkhighcourt.nic.in/upload/causelist/sgr/2026/Oct/weeklycauselist_21102026/entirelist_sgr.pdf)). According to search snippets, the lists order matters by advocate and party. Unverified: whether daily or supplementary lists also exist, the Jammu-wing path (probably `/jmu/`), and the publication time.
-- **Display board (O):** `https://jkhc.gov.in/dis/`, titled "Digital Display Board", described as showing court numbers, coram and serial numbers. LED screens in and outside courtrooms run on the same system (S). Format (HTML or JSON), refresh rate and access rules are unverified.
-- **Classification:** cause list **OPEN?**, display board **OPEN?**, orders **UNKNOWN**.
+- **Cause-list index pages (V):**
+  - `jkhighcourt.nic.in/causelistk.php` (Srinagar);
+  - `jkhighcourt.nic.in/causelistj.php` (Jammu);
+  - `jkhighcourt.nic.in/causelistl.php` (Ladakh);
+  - `causelistk_2022.php` holds the archive.
+- **Files (V):** a weekly folder `upload/causelist/sgr/<YYYY>/<Mon>/weeklycauselist_<DDMMYYYY>/` contains:
+  - `causelist_<DDMMYYYY>.pdf`, **one per day**. On Tuesday 10 Nov the lists for Wed 11, Thu 12 and Fri 13 Nov were already published, so lists appear days ahead;
+  - supplementary and special supplementary lists;
+  - `entirelist_sgr.pdf`, the whole week (162 pages, with an index of benches and item ranges per day);
+  - `rjcourtsgr.pdf`, the Registrar Judicial list.
+- **Real-world quirks (V)** the adapter must handle:
+  - Links use Windows backslashes (`\upload\causelist\…`).
+  - A link labelled "Supplementary Cause List - 11.11.2026" points at a file named for 21.10.2026.
+  - Another supplementary link returned **404**.
+  - The month folder is `Nov` in November and was `April` in April (not always three letters).
+- **PDF format (V, 11 Nov list):**
+  - It is a **text PDF**, not a scan (`dompdf`), so no OCR is needed.
+  - Layout: "REGULAR CAUSE LIST FOR WEDNESDAY(11/11/2026)", then `BENCH NO.: DB-II`, `COURT NO.: 2`, the judges, and section headings ("ADMISSION/ORDERS", "a) BEFORE NOTICE MATTERS").
+  - Each item has a serial number, case numbers with linked applications (e.g. `CM(7741/2026) IN LPA 126/2026`), "PETITIONER Vs RESPONDENT", a counsel line ("… FOR PET." / "… FOR RES."), and connected matters ("c/w i) WP(C) 1707/2021").
+  - The three columns run together when extracted as plain text, so the parser must use word positions.
+- **Display board (V):** `jkhc.gov.in/dis/` is **server-rendered HTML** (no API call). It has `<meta http-equiv="Refresh" content="120">`, one table per wing (Srinagar, Jammu) and a "Messages" table keyed by court number. Footer: "Court Nos. which are not listed are currently not in session" and "There may be a time gap in internet transmission. Confirm exact status at the concerned court."
+  - Every snapshot from 14:53 to about 15:10 IST read **"No Cases To Display"** for both wings, with unchanged morning messages. Behaviour while items are actually being called has **not** been seen yet (§6).
+- **Terms:** the HC site has no terms page at `disclaimer.php` (404). Its policy pages are not yet found.
 
-### 3.5 Comparison High Courts (for adapter design, not first targets)
+### 3.5 Other High Courts (for the all-High-Court rollout)
 
-- **Delhi HC display board (O, official circular):** `delhihighcourt.nic.in/app/physical-display-board` shows court no., item no., judges, case no. and title ([circular](https://delhihighcourt.nic.in/files/2025-09/announcements/1131-it_cell-sd-updated.pdf)).
-- **Karnataka HC:** a bench-wise display board at `display_board_bench.php` (S, coaching site).
-- **Bombay HC:** an online display board is heavily relied on (S: [Bar & Bench](https://www.barandbench.com/amp/story/columns/three-hours-of-silence-the-human-cost-of-a-court-website-that-wont-load)).
-- **Gujarat HC:** display board livestreamed on YouTube. Not machine-readable, so unsuitable (S: [Bar & Bench](https://www.barandbench.com/news/gujarat-high-court-display-board-youtube-channel)).
-- **Lesson:** display boards differ per court. Expect one adapter per court, as the brief predicts.
+- **Delhi (V):** `delhihighcourt.nic.in/app/physical-display-board` is a page whose data is loaded by script (`physical_display_board`). The data call has not yet been observed. An official circular says it shows court no., item no., judges, case no. and title.
+- **Karnataka** (`display_board_bench.php`, S), **Bombay** (S) and **Gujarat** (YouTube stream, unusable, S): not yet verified.
+- The other 21 High Courts have **not been surveyed yet** (§6, item 1).
 
 ### 3.6 Supreme Court of India
 
-- **Daily cause lists (O):** `https://api.sci.gov.in/jonew/cl/<YYYY-MM-DD>/<M|F>_J_<n>.pdf` (Miscellaneous or Final list, part *n*). Older lists are on `main.sci.gov.in` ([example](https://api.sci.gov.in/jonew/cl/2026-10-26/M_J_2.pdf)). According to snippets, each list is grouped by "COURT NO.", then the judges, then items with serial no., case type and number, diary no., parties and advocates.
-- **Policy (S):** contents may not be reproduced "without duly & prominently acknowledging the source" ([website policies](https://www.sci.gov.in/website-policies/)).
-- **Display board:** not found.
+- **Daily cause lists (V):** `https://api.sci.gov.in/jonew/cl/<YYYY-MM-DD>/<M|F>_J_<n>.pdf`. The host serves a robots.txt (200) that allows this path.
+  - It is a **text PDF** (`mPDF`).
+  - Layout: court name ("CHIEF JUSTICE'S COURT"), judges, time, then columns "SNo. | Case No. | Petitioner / Respondent | Petitioner/Respondent Advocate", IA details, the date and time the list was generated, and the signing officer.
+- **Main site:** `www.sci.gov.in` returned **403** for robots.txt, so the capture tool skips the host. Website policies (reproduction with acknowledgement, S) are still unread.
 
 ### 3.7 Tribunals
 
-- **NCLT (O):** per-bench PDF cause lists under `nclt.gov.in/sites/default/files/pdf_cause_list/…`. File names are hand-typed (e.g. `Supple 16.07.2025 Court 1.pdf`), so an index page is needed. A "customised cause list" exists at `efiling.nclt.gov.in/nclt/mis/causelist.php`; its access class is unknown.
-- **NGT (O):** dated cause-list pages per bench (Chairperson Bench, Court II, Court III, RG Court, zonal benches), e.g. `greentribunal.gov.in/archive-principal-court-II-cause-list`. The archive runs to April 2026.
-- **CAT (S):** daily cause lists per bench on `cgat.gov.in`. An aggregator says Delhi lists appear by 6 PM the previous working day and that the site format changed in April 2026. The Jammu bench handles J&K matters.
-- **DRT (O):** individual tribunal sites (e.g. `drt2chennai.tn.nic.in`) have "Cause Lists" menus. Whether a national `drt.gov.in` list exists is unverified.
-- **ITAT:** nothing found.
-- **Classification:** NCLT and NGT **OPEN?**; CAT, DRT, ITAT **UNKNOWN**.
+- **NGT (V):** `greentribunal.gov.in/archive-principal-court-II-cause-list` is a Drupal page that loads without JavaScript and lists dated cause lists per bench. Its PDF link pattern is not yet extracted. **OPEN?**
+- **NCLT (V, failed):** `nclt.gov.in` and `efiling.nclt.gov.in` fail certificate verification ("self-signed certificate in certificate chain"). We will **not** turn verification off. Next: check whether the server sends an incomplete chain (a browser fills that gap; we can add the missing intermediate certificate) or whether this network intercepts it.
+- **ITAT (V, failed):** `itat.gov.in` fails with "unable to get local issuer certificate", probably a missing intermediate certificate. Same next step.
+- **CAT (V):** `cgat.gov.in` is a JavaScript application ("You need to enable JavaScript to run this app"). Its data calls have not been observed yet.
+- **DRT:** per-tribunal sites (O). Not yet visited.
 
 ### 3.8 Consumer commissions: e-Jagriti
 
-- Since **1 January 2025**, e-Jagriti (`e-jagriti.gov.in`) has replaced eDaakhil, OCMS, CMS and CONFONET for the district, state and national commissions (S: [Vikaspedia](https://en.vikaspedia.in/viewcontent/social-welfare/social-awareness/consumer-education/e-jagriti-portal-for-consumer-grievance-redressal), [Kashmir Life](https://kashmirlife.net/jammu-kashmir-consumer-commissions-handle-761-cases-through-e-jagriti-since-january-2025-446598/)).
-- **Cause list:** choose hearing date, commission and court number, then "Get Causelist" (S).
-- **Case status:** cases filed before 2025 use an "old case format" (S).
-- **Classification:** **UNKNOWN** for every capability until the page is read.
+- **Verified:** `e-jagriti.gov.in` is a JavaScript application (a single `main.*.js` bundle). Since 1 Jan 2025 it has replaced eDaakhil, OCMS, CMS and CONFONET (S).
+- The cause-list route (date + commission + court no., S) and any CAPTCHA can only be seen by opening it in a real browser (Playwright, allowed by the brief where JavaScript is unavoidable). **UNKNOWN**.
 
 ### 3.9 Official APIs and third-party providers
 
-- **NJDG Open API:** provided to Central and State Government departments, PSUs and other *institutional government litigants*, using a department ID and access key, after registering on NAPIX (S: [DAE circular](https://cdnbbsr.s3waas.gov.in/s35b8e4fd39d9786228649a8a8bec4e008/uploads/2023/08/2023081622.pdf), [NIC eCourts presentation](https://nja.gov.in/Concluded_Programmes/2022-23/P-1300_PPTs/1.eCourts.pdf)). **Not available to a private chamber** on this evidence, so **NOT PERMITTED?**.
-- **Paid aggregators** ([Surepass](https://surepass.io/ecourt-cnr-search-api/), [eCourtsIndia](https://ecourtsindia.com/api), [Vakeel360](https://vakeel360.com/api)) sell case-status, cause-list and order APIs built on the public portals. They are **not official**, and how they handle CAPTCHAs is unknown. Using one is the "authorised provider" route in §2A and **your decision**. Nothing is integrated.
+- **NJDG Open API:** for Central and State Government departments, PSUs and other institutional government litigants, through NAPIX registration (S). **Not available to private chambers**, so **NOT PERMITTED?**.
+- **Paid aggregators** (Surepass, eCourtsIndia, Vakeel360) are not official, and their CAPTCHA handling is unknown. Using one is the "authorised provider" route in §2A and is **your decision**. Nothing is integrated.
 
 ## 4. Terms of use, law and access rules
 
-- **Terms not yet read.** `hcservices` has Terms and Conditions; `ecourts.gov.in` lists a Disclaimer, Terms, a Copyright Policy and a Hyperlinking Policy. None could be opened. They must be read before any adapter is built.
-- **robots.txt is not permission.** The capture tool obeys robots.txt and treats an unreadable one as "skip", but the terms decide.
-- **IT Act, 2000, s.43(b)** creates civil liability for downloading, copying or extracting data from a computer system *without the permission of its owner or person in charge*. It becomes an offence under s.66 if done dishonestly or fraudulently. Commentary says it has not been settled for public pages, and the government has reportedly said scraping publicly available data *may* breach s.43 (S: [law.asia](https://law.asia/india-data-scraping-regulation/), [S.S. Rana](https://ssrana.in/articles/data-scraping-issues-india/)). **Needs legal review.**
-- **Proposed posture:**
-  - Fetch only documents a court itself publishes for public download (PDF cause lists, display boards).
-  - Fetch at human-like frequency, identified by our User-Agent.
-  - Never circumvent a CAPTCHA, login or geofence.
-  - Credit the source in the UI.
-  - Stop if a court asks.
-- **DPDP Act, 2023, s.3(c)(ii)** excludes personal data made publicly available under a legal obligation. Court-published cause lists *may* fall within it. AdalatNama will still treat everything it stores as confidential. **Needs legal confirmation.**
-- **Geofencing:** some Indian government sites have blocked foreign IPs (Election Commission, Rajya Sabha; S: [ThePrint](https://theprint.in/india/rajya-sabha-site-blocked-outside-india-for-security-reasons-lok-sabha-site-still-accessible/510649)). Whether eCourts does is unverified. Production should be hosted in India anyway, and AdalatNama will **never** use VPNs or IP rotation to get around a block.
+- **eCourts Copyright Policy (V, quoted):** "The contents on this website shall not be reproduced partially or fully, without duly & prominently acknowledging the source. The contents of this website cannot be used in any misleading or objectionable context or derogatory manner." So **every cause-list entry, board reading and order shown by AdalatNama must name its source** (court and document), as the brief already requires for dates.
+- **eCourts Terms / District website policies (V):** "for reference purposes only and do not purport to a legal document". This supports the brief's "verify against the order" rule.
+- **Hyperlinking policy (V):** concerns links *from* eCourts; it has no rule on linking to or fetching from eCourts.
+- **No published rule on automated access** was found on any eCourts or district page (V). None of the verified hosts publishes a robots.txt (404), except `api.sci.gov.in` (200, allows the cause-list path) and `www.sci.gov.in` (403).
+- **IT Act, 2000, s.43(b)** (civil liability for downloading or extracting data without the permission of the person in charge) remains the open legal question. A court publishing a PDF for public download is arguably permission to download it. Automated *form* access is not, and the CAPTCHAs show the courts do not want that automated. **Needs your legal review.**
+- **DPDP Act, 2023, s.3(c)(ii)** (data made public under a legal obligation) may cover published cause lists. **Needs legal confirmation.**
+- **Posture (D-020):**
+  - Fetch only documents and pages a court publishes openly.
+  - Fetch at human-like frequency, identified by our User-Agent, and credit the source.
+  - Never bypass a CAPTCHA, login, certificate check or geofence.
+  - Stop on request.
 
-## 5. Recommended adapter plan (provisional, needs your decisions)
+## 5. Scaling from the pilot to every court
 
-Order of preference for every capability:
+The brief requires the first two adapters to pass on real material before any other starts (§6). The pilot exists to prove the pipeline: fetch, parse, match, consolidate, alert. The rollout then goes source family by source family:
 
-1. an official push to the chamber;
-2. a document the court publishes (OPEN);
-3. a human-in-the-loop CAPTCHA step;
-4. an authorised provider.
+| Source family | How many | Route | Adapter shape |
+|---|---|---|---|
+| **High Court cause lists** | 25 HCs (plus benches) | Each HC's own published lists (the eCourts HC portal is CAPTCHA-gated, V) | One adapter **per HC website**, sharing a common PDF/HTML parsing toolkit and the matching ladder. Each needs its own fixtures, because layouts differ (J&K and the Supreme Court already differ). |
+| **High Court display boards** | 25 | Each HC's board (J&K: HTML; Delhi: data loaded by script) | One adapter per HC; polling only during court hours, only for halls with a followed case. |
+| **District court cause lists** | ~700 district sites, one national system | eCourts email/SMS push (one adapter for all), or a human-solved CAPTCHA (one adapter for all S3WaaS district sites, since the form is the same), or a provider | **One adapter family covers every district**, parameterised by the codes the portal publishes (`est_code`, court number). |
+| **Orders** | all forums | eCourts portals are CAPTCHA-gated; emails may carry them | Decided with the district route. |
+| **Tribunals and commissions** | NCLT, NCLAT, CAT, ITAT, DRT/DRAT, NGT, consumer commissions… | Per-tribunal websites and apps | One adapter per tribunal family, in the order of your chamber's practice (Q14). |
 
-Never a bypass.
+## 6. Remaining Phase 0.5 work
 
-| # | Adapter | Source | Class | Phase | Blocked on |
+1. **Survey all 25 High Courts.** For each: where cause lists are published (PDF or HTML, daily or weekly, advance publication), whether a display board is online and in what format, CAPTCHA or login status, and the terms page. About two to four polite requests per court.
+2. **Observe the J&K display board while courts are calling items:** 4–6 snapshots between 10:30 and 13:00 IST on a court day. Today's afternoon snapshots only showed "No Cases To Display".
+3. **Record when J&K cause lists appear:** capture the index pages in the evening and morning over a few days.
+4. **Open the JavaScript apps in a browser** (e-Jagriti, CAT, the Delhi board) to see their data calls and any CAPTCHA.
+5. **Certificate chains for NCLT and ITAT:** find out whether a missing intermediate certificate is the cause; if so, add the official one rather than switching verification off.
+6. **Make the fixtures durable:**
+   - Captured files currently live only in this session's git-ignored `private/` folder and **will be lost when the cloud container is reclaimed**.
+   - They name real litigants and advocates, so they can be committed only once the repository is **private** (Q1).
+   - Otherwise they must be redacted first.
+7. Your decisions in §7.
+
+## 7. Decisions needed from you
+
+1. **District-court route** (Q12): eCourts email/SMS ingestion (recommended, scales nationally; needs one sample message), a human-solved CAPTCHA, or a paid provider.
+2. **Make the repository private** (Q1), so the verified fixtures can be committed.
+3. **Legal read** of §4 (s.43(b), DPDP s.3(c)(ii), the copyright acknowledgement duty).
+4. **Order of rollout:** after the pilot, which High Courts and tribunals first (Q14)?
+
+## 8. Capture manifest, 2026-11-10 (IST)
+
+The files are in the git-ignored `private/source-captures/2026-11-10/`, each with a `.meta.json` provenance record. The User-Agent was `AdalatNama-SourceDiscovery/0.1 (+repository URL; …)`, with at least 10 s plus jitter between requests to a host.
+
+| Capture | Outcome | HTTP | Bytes | SHA-256 (first 16) | Time |
 |---|---|---|---|---|---|
-| 1 | `hc_jk_site` CauseListSource | J&K HC weekly (and any daily or supplementary) PDF lists | OPEN? | 3 | Network access; verification; terms; Q3 |
-| 2 | District court cause list | **(a)** eCourts automated emails to the advocate (email ingestion), **or (b)** human-solved CAPTCHA, **or (c)** paid provider | OPEN to advocate / CAPTCHA / provider | 3 | **Your decision**, plus one sample court email if (a) |
-| 3 | `hc_jk_display` DisplayBoardSource | `jkhc.gov.in/dis/` | OPEN? | 4 | Verification during court hours; refresh rate; terms |
-| 4 | HC and district orders | eCourts portals (CAPTCHA) or court websites; emails if they carry orders | CAPTCHA? / UNKNOWN | 5 | Verification; decision as in row 2 |
-| 5 | Tribunals and consumer commissions | NCLT PDFs, NGT pages, e-Jagriti, CAT, ITAT | mixed | after 1–4 pass on real material | Your list of tribunals actually used |
-| — | Case-status lookups | eCourts portals | CAPTCHA | not in v1 (F1 decision) | — |
+| `jkhc-home` | saved | 200 | 170296 | 6e9e371a8510919b | 14:53:30 |
+| `jkhc-causelist-sgr-weekly-2026-10-21` | saved | 200 | 2483298 | 0713b70743050240 | 14:53:43 |
+| `jkhc-display-board-sgr` | saved | 200 | 6442 | e548cc465eeac893 | 14:53:57 |
+| `hcservices-main` | saved | 200 | 578605 | 9204607fad9e4333 | 14:54:11 |
+| `hcservices-terms` | saved | 200 | 46792 | a47a0b1bfc58710a | 14:54:20 |
+| `hcservices-jk-srinagar` | saved | 200 | 48608 | 802375f6dbe6c9d0 | 14:54:33 |
+| `ecourts-district-main` | saved | 200 | 110361 | b372164099655cdf | 14:54:47 |
+| `ecourts-home` | saved | 200 | 141852 | 4164f51121b598ff | 14:55:04 |
+| `srinagar-district-home` | saved | 200 | 176716 | bae855304d886dbc | 14:55:20 |
+| `delhihc-display-board` | saved | 200 | 33059 | e082d024e630d254 | 14:55:32 |
+| `sci-causelist-2026-10-26-M_J_2` | saved | 200 | 554983 | 9ef641808885f3aa | 14:55:50 |
+| `sci-website-policies` | skipped: robots.txt 403 | — | — | — | — |
+| `nclt-supplementary-2025-07-16` | unreachable: certificate | — | — | — | — |
+| `nclt-efiling-causelist` | unreachable: certificate | — | — | — | — |
+| `ngt-principal-court2-causelists` | saved | 200 | 43927 | 2a540b1778ca8199 | 14:56:06 |
+| `ejagriti-home` | saved (JS app shell) | 200 | 888 | 0939c275fe4d2417 | 14:56:21 |
+| `cat-home` | saved (JS app shell) | 200 | 1440 | 5df084960fc6e272 | 14:56:35 |
+| `itat-home` | unreachable: certificate | — | — | — | — |
+| `jkhc-causelist-index-sgr` | saved | 200 | 152885 | 89c28b9d002fb764 | 14:57:17 |
+| `jkhc-causelist-index-jmu` | saved | 200 | 253587 | 135941f78db82eee | 14:57:32 |
+| `jkhc-causelist-index-ladakh` | saved | 200 | 152429 | e67f5032a1ec1ab6 | 14:57:44 |
+| `jkhc-causelist-sgr-daily-2026-11-11` | saved | 200 | 185337 | 053813e533ad767d | 14:58:13 |
+| `jkhc-causelist-sgr-supplementary-2026-11-11` | 404 (dead link on the index) | 404 | 670 | — | 14:58:27 |
+| `ecourts-policy-terms` | saved | 200 | 107357 | d4e76a7935cf5680 | 14:59:23 |
+| `ecourts-policy-copyright` | saved | 200 | 105605 | 48d98d27412a7aea | 14:59:36 |
+| `ecourts-policy-hyperlink` | saved | 200 | 106228 | ca65f7e52b510d03 | 14:59:48 |
+| `ecourts-policy-disclaimer` | saved | 200 | 105881 | b1f61bda3b430f43 | 14:59:59 |
+| `srinagar-district-causelist-page` | saved | 200 | 135185 | f406876eb0d691f3 | 15:00:12 |
+| `srinagar-district-website-policies` | saved | 200 | 118245 | 7664b5ed7dc57d82 | 15:00:30 |
+| `jkhc-website-policies-probe` | 404 (no such page) | 404 | 670 | — | 15:00:45 |
+| `jkhc-display-board-sgr-t0926` … `-t09xx` | saved, identical to the first board snapshot | 200 | 6442 | e548cc465eeac893 | 14:57–15:10 |
 
-No further adapter starts until the first two pass their fixture tests on real material (brief §6).
+## Sources consulted
 
-## 6. Verification checklist (runs as soon as the hosts are reachable)
+Live pages (V) are listed in §8. Desk research (2026-11-05, via web search):
 
-```bash
-cd api && uv run python -m tools.source_capture --targets tools/capture_targets.toml
-```
-
-The tool gets robots.txt first, waits at least 10 s (plus jitter) between requests to a host, retries politely, and captures display boards only in court hours. Results go to the git-ignored `private/source-captures/<date>/`, each with a `.meta.json` provenance record (URL, time in UTC and IST, SHA-256, headers, User-Agent).
-
-For each row in §2:
-
-1. Capture the page and confirm the class (any CAPTCHA, login or geofence?).
-2. Read the terms, disclaimer and copyright pages and quote the relevant sentences here.
-3. **Cause lists:** capture the index on 3–5 days, evening and morning, to learn when lists appear, the file-naming pattern, and how supplementary lists are marked.
-4. **Display boards:** take 3–5 captures about 2 minutes apart in court hours. Record format, refresh behaviour, and how items are skipped or called out of order.
-5. Record rate behaviour (response times, any 429s or blocks).
-6. Update the class and evidence level to **V** and add the fixtures to the repository, once it is private or after redaction (D-019).
-
-## 7. What I need from you
-
-1. **Network access**, so this environment can reach the court hosts (environment settings → Network access → Allowed domains). If the sites turn out to block non-Indian IPs, the capture command in §6 has to run from an Indian machine or the future production server.
-2. **Which High Court and district court come first** (Q3).
-3. **The district-court route** (row 2 of §5): email ingestion, human-solved CAPTCHA, or a paid provider. If email: does your chamber receive eCourts SMS or emails for its cases? One sample message would show the format.
-4. **Repository privacy** before fixtures are committed (Q1).
-5. **A legal read of the eCourts and High Court terms** once they can be opened, and of the s.43 / DPDP points in §4. You are better placed to judge Indian law than I am.
-
-## Sources consulted (2026-11-05, via web search)
-
-- eCourts High Court Services, [home](https://hcservices.ecourts.gov.in/), [High Courts list](https://hcservices.ecourts.gov.in/hcservices/static_pages_for_HC/static/highcourts.php), [Srinagar Wing page](https://hcservices.ecourts.gov.in/ecourtindiaHC/index_highcourt.php?state_cd=12&dist_cd=1&court_code=2&stateNm=Jammu+and+Kashmir), [terms link](https://hcservices.ecourts.gov.in/hcservices/static_pages_for_HC/static/terms.php)
 - [eCommittee: High Court Services](https://ecommitteesci.gov.in/project/high-court-services/), [eCommittee: Digital Display Board](https://ecommitteesci.gov.in/division/digital-display-board/)
-- [J&K HC home](https://jkhighcourt.nic.in/), [weekly list 21 Oct 2026](https://jkhighcourt.nic.in/upload/causelist/sgr/2026/Oct/weeklycauselist_21102026/entirelist_sgr.pdf), [weekly list 27 Apr 2026](https://jkhighcourt.nic.in/upload/causelist/sgr/2026/April/weeklycauselist_27042026/entirelist_sgr.pdf), [display board](https://jkhc.gov.in/dis/)
-- [District Court Srinagar](https://srinagar.dcourts.gov.in/document-category/notification), [Parbhani e-court services page](https://parbhani.gov.in/service/e-court-services)
-- [Supreme Court cause list example](https://api.sci.gov.in/jonew/cl/2026-10-26/M_J_2.pdf), [SCI website policies](https://www.sci.gov.in/website-policies/)
-- [Delhi HC display-board circular](https://delhihighcourt.nic.in/files/2025-09/announcements/1131-it_cell-sd-updated.pdf)
-- [NCLT supplementary list example](https://nclt.gov.in/sites/default/files/pdf_cause_list/Supple%2016.07.2025%20Court%201.pdf), [NGT Court II cause lists](https://www.greentribunal.gov.in/archive-principal-court-II-cause-list), [DRT-2 Chennai](https://drt2chennai.tn.nic.in/)
+- [Vikaspedia: eCourts case status guide](https://en.vikaspedia.in/viewcontent/e-governance/online-legal-services/how-to-check-court-case-status-online-in-india-a-complete-guide-to-ecourts-cnr-number-case-number-and-case-history?lgn=en), [India Education Diary: accessible CAPTCHAs on High Court sites](https://indiaeducationdiary.in/?p=163530)
+- [Delhi HC display-board circular](https://delhihighcourt.nic.in/files/2025-09/announcements/1131-it_cell-sd-updated.pdf), [Bar & Bench on Bombay HC](https://www.barandbench.com/amp/story/columns/three-hours-of-silence-the-human-cost-of-a-court-website-that-wont-load), [Bar & Bench on Gujarat HC](https://www.barandbench.com/news/gujarat-high-court-display-board-youtube-channel)
+- [NCLT cause list example](https://nclt.gov.in/sites/default/files/pdf_cause_list/Supple%2016.07.2025%20Court%201.pdf), [DRT-2 Chennai](https://drt2chennai.tn.nic.in/)
 - [Vikaspedia: e-Jagriti](https://en.vikaspedia.in/viewcontent/social-welfare/social-awareness/consumer-education/e-jagriti-portal-for-consumer-grievance-redressal), [Kashmir Life: e-Jagriti in J&K](https://kashmirlife.net/jammu-kashmir-consumer-commissions-handle-761-cases-through-e-jagriti-since-january-2025-446598/)
 - [DAE circular on the NJDG Open API](https://cdnbbsr.s3waas.gov.in/s35b8e4fd39d9786228649a8a8bec4e008/uploads/2023/08/2023081622.pdf), [NIC eCourts presentation](https://nja.gov.in/Concluded_Programmes/2022-23/P-1300_PPTs/1.eCourts.pdf)
 - [eCourts automated email/SMS presentation](https://cdnbbsr.s3waas.gov.in/s3ec04621fbd17da27241c58015eabe416/uploads/2023/11/2023112049.pdf), [HT: litigants to get email alerts](https://www.pressreader.com/india/hindustan-times-lucknow/20171127/281569471041806)
-- [law.asia on data scraping](https://law.asia/india-data-scraping-regulation/), [S.S. Rana on data scraping](https://ssrana.in/articles/data-scraping-issues-india/)
-- [ThePrint on Rajya Sabha geoblocking](https://theprint.in/india/rajya-sabha-site-blocked-outside-india-for-security-reasons-lok-sabha-site-still-accessible/510649), [Bar & Bench on Bombay HC](https://www.barandbench.com/amp/story/columns/three-hours-of-silence-the-human-cost-of-a-court-website-that-wont-load), [Bar & Bench on Gujarat HC](https://www.barandbench.com/news/gujarat-high-court-display-board-youtube-channel)
+- [law.asia on data scraping](https://law.asia/india-data-scraping-regulation/), [S.S. Rana on data scraping](https://ssrana.in/articles/data-scraping-issues-india/), [ThePrint on Rajya Sabha geoblocking](https://theprint.in/india/rajya-sabha-site-blocked-outside-india-for-security-reasons-lok-sabha-site-still-accessible/510649)
 - Third-party providers (not official): [Surepass](https://surepass.io/ecourt-cnr-search-api/), [eCourtsIndia](https://ecourtsindia.com/api), [Vakeel360](https://vakeel360.com/api)
